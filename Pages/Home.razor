@@ -1,0 +1,43 @@
+﻿@page "/"
+<h3>Snap Your Receipt</h3>
+
+<InputFile OnChange="HandleUpload" accept="image/*" />
+@if (previewUrl != null)
+{
+    <img src="@previewUrl" alt="Receipt Preview" style="max-width:100%; margin-top:10px;" />
+    <button class="btn btn-primary mt-2" @onclick="UploadToAzure">Upload Receipt</button>
+}
+
+@code {
+    private string? previewUrl;
+    private IBrowserFile? receiptFile;
+    
+
+
+    private async Task HandleUpload(InputFileChangeEventArgs e)
+    {
+        receiptFile = e.File;
+        var buffer = new byte[receiptFile.Size];
+        await receiptFile.OpenReadStream().ReadAsync(buffer);
+        previewUrl = $"data:{receiptFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+    }
+
+    private async Task UploadToAzure()
+    {
+        var sasUrl = "https://<your-storage-account>.blob.core.windows.net/receipts/<filename>?<sas-token>";
+        using var client = new HttpClient();
+        var content = new StreamContent(receiptFile.OpenReadStream());
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(receiptFile.ContentType);
+        var response = await client.PutAsync(sasUrl, content);
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("Upload successful!");
+        }
+        else
+        {
+            Console.WriteLine("Upload failed.");
+        }
+    }
+   
+
+}
